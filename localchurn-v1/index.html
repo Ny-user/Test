@@ -1,0 +1,1216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>Butterchurn Controls</title>
+  <meta name="description" content="Butterchurn visualizer control panel - fully local/offline">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <script type="text/javascript" src="vendor/lodash.min.js"></script>
+  <script type="text/javascript" src="vendor/base.min.js"></script>
+  <script type="text/javascript" src="vendor/extra.min.js"></script>
+  <script src="vendor/jquery.min.js"></script>
+
+  <link rel="stylesheet" href="vendor/normalize.css" />
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #111113;
+      --surface: #1b1b1f;
+      --surface-2: #26262b;
+      --surface-3: #303036;
+      --border: #34343b;
+      --text: #ececf1;
+      --text-muted: #9a9aa6;
+      --accent: #4f8cff;
+      --accent-soft: rgba(79, 140, 255, 0.16);
+      --ok: #3ecf8e;
+      --error: #ff7b72;
+      --radius: 8px;
+      --control-h: 34px;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      font-size: 14px;
+      line-height: 1.45;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    [hidden] {
+      display: none !important;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      padding: 24px 16px 40px;
+    }
+
+    main {
+      max-width: 640px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    h2 {
+      margin: 0 0 12px;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+
+    kbd {
+      font: inherit;
+      font-size: 12px;
+      padding: 1px 6px;
+      border: 1px solid var(--border);
+      border-bottom-width: 2px;
+      border-radius: 4px;
+      background: var(--surface-2);
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+    }
+
+    .row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .muted {
+      color: var(--text-muted);
+    }
+
+    .count {
+      margin-left: 6px;
+      font-weight: 400;
+      letter-spacing: 0;
+      text-transform: none;
+    }
+
+    /* Header */
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .header h1 {
+      flex: 1;
+    }
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--text-muted);
+    }
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--text-muted);
+    }
+    .status.is-on .dot {
+      background: var(--ok);
+    }
+
+    /* Controls */
+    button,
+    select,
+    input[type="number"] {
+      font: inherit;
+      color: var(--text);
+      height: var(--control-h);
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--surface-2);
+    }
+
+    button {
+      padding: 0 14px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background-color 0.12s, border-color 0.12s;
+    }
+    button:hover {
+      background: var(--surface-3);
+    }
+    button:focus-visible,
+    select:focus-visible,
+    input:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 1px;
+    }
+    button.primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+    button.primary:hover {
+      background: #6a9dff;
+    }
+    button.icon {
+      width: var(--control-h);
+      padding: 0;
+      font-size: 18px;
+      line-height: 1;
+    }
+
+    select {
+      flex: 1;
+      min-width: 0;
+      padding: 0 8px;
+    }
+
+    input[type="number"] {
+      width: 64px;
+      padding: 0 8px;
+    }
+    input:disabled {
+      opacity: 0.5;
+    }
+
+    .seconds {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    input[type="checkbox"] {
+      accent-color: var(--accent);
+      width: 16px;
+      height: 16px;
+      margin: 0;
+    }
+
+    label.check {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+    }
+
+    /* Audio source selector: one button per source; the active one is
+       highlighted, and clicking it again turns it off. */
+    .sources {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+    .sources button {
+      height: auto;
+      padding: 10px 12px;
+      text-align: left;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      white-space: normal;
+    }
+    .sources .label {
+      font-weight: 600;
+    }
+    .sources .hint {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+    .sources button[aria-pressed="true"] {
+      background: var(--accent-soft);
+      border-color: var(--accent);
+    }
+    .sources button.is-pending {
+      border-style: dashed;
+      border-color: var(--accent);
+    }
+
+    .source-status {
+      margin-top: 12px;
+      min-height: var(--control-h);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .source-status #sourceStatus {
+      flex: 1;
+      min-width: 0;
+      overflow-wrap: anywhere;
+    }
+
+    .message {
+      margin: 8px 0 0;
+      color: var(--error);
+    }
+
+    .options {
+      margin-top: 12px;
+      gap: 16px 24px;
+    }
+
+    .shortcuts {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 6px 16px;
+      margin: 0;
+    }
+    .shortcuts dt {
+      white-space: nowrap;
+    }
+    .shortcuts dd {
+      margin: 0;
+      color: var(--text-muted);
+    }
+
+    /* Effects */
+    .card-head {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .card-head h2 {
+      margin: 0;
+      flex: 1;
+    }
+    button:disabled {
+      opacity: 0.45;
+      cursor: default;
+    }
+    button:disabled:hover {
+      background: var(--surface-2);
+    }
+
+    #effectsBody {
+      transition: opacity 0.15s;
+    }
+    #effectsBody.is-bypassed {
+      opacity: 0.45;
+    }
+
+    .subhead {
+      margin: 18px 0 8px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .subhead:first-child {
+      margin-top: 0;
+    }
+    .subhead .muted {
+      font-weight: 400;
+    }
+
+    .segmented {
+      display: inline-flex;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    .segmented button {
+      border: 0;
+      border-radius: 0;
+      border-right: 1px solid var(--border);
+    }
+    .segmented button:last-child {
+      border-right: 0;
+    }
+    .segmented button[aria-pressed="true"],
+    .chips button[aria-pressed="true"] {
+      background: var(--accent-soft);
+      border-color: var(--accent);
+      color: #fff;
+    }
+    .segmented button[aria-pressed="true"] {
+      box-shadow: inset 0 0 0 1px var(--accent);
+    }
+
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .sliders {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px 24px;
+    }
+    .slider label {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+    .slider output {
+      color: var(--text-muted);
+      font-variant-numeric: tabular-nums;
+    }
+    .slider input[type="range"] {
+      width: 100%;
+      margin: 0;
+      accent-color: var(--accent);
+    }
+
+    @media (max-width: 520px) {
+      .sources,
+      .sliders {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+
+  <script type="module">
+    import butterchurn from './vendor/butterchurn.js';
+    import { EffectsPass, DEFAULT_EFFECTS } from './effects.js';
+
+    $(function() {
+      // ~4K (3840x2160) worth of device pixels.
+      var MAX_RENDER_PIXELS = 3840 * 2160;
+      var BLEND_TIME = 5.7;
+      var CYCLE_BLEND_TIME = 2.7;
+
+      var audioContext = new AudioContext();
+      var visualizer = null;
+      var effectsPass = null;
+      var displayWin = null;
+
+      // The node the visualizer listens to, and the active audio source:
+      // { kind: 'files' | 'mic' | 'speaker', stop(), status(), next? }
+      var audioNode = null;
+      var source = null;
+      var pendingKind = null;
+      // Bumped on every source request; a request that finishes after a newer
+      // one was made is discarded, so only the latest click wins.
+      var requestId = 0;
+
+      var presets = {};
+      var presetKeys = [];
+      var presetIndexHist = [];
+      var presetIndex = 0;
+      var presetCycle = true;
+      var presetCycleLength = 15000;
+      var presetRandom = true;
+      var cycleTimeout = null;
+
+      /* ---------- Audio sources ---------- */
+
+      function setAudioNode(node) {
+        if (visualizer && audioNode) {
+          visualizer.disconnectAudio(audioNode);
+        }
+        audioNode = node;
+        if (visualizer && audioNode) {
+          visualizer.connectAudio(audioNode);
+        }
+      }
+
+      // Swap in a new source only once it has started, so cancelling a file
+      // picker or permission prompt leaves the current source playing.
+      function activateSource(newSource, node) {
+        stopSource();
+        pendingKind = null;
+        source = newSource;
+        setAudioNode(node);
+        updateSourceUI();
+      }
+
+      function stopSource() {
+        if (!source) {
+          return;
+        }
+        var old = source;
+        source = null;
+        setAudioNode(null);
+        old.stop();
+        updateSourceUI();
+      }
+
+      function stopIfCurrent(s) {
+        if (source === s) {
+          stopSource();
+        }
+      }
+
+      function setPending(kind) {
+        pendingKind = kind;
+        showMessage('');
+        updateSourceUI();
+        return ++requestId;
+      }
+
+      function isCurrentRequest(id) {
+        return id === requestId;
+      }
+
+      function clearPending(id) {
+        if (isCurrentRequest(id)) {
+          pendingKind = null;
+          updateSourceUI();
+        }
+      }
+
+      function showMessage(text) {
+        $('#audioMessage').text(text).prop('hidden', !text);
+      }
+
+      function updateSourceUI() {
+        $('.sources button').each(function() {
+          var kind = $(this).data('source');
+          $(this).attr('aria-pressed', String(!!source && source.kind === kind));
+          $(this).toggleClass('is-pending', pendingKind === kind);
+        });
+
+        var text;
+        if (pendingKind === 'mic') {
+          text = 'Waiting for microphone permission…';
+        } else if (pendingKind === 'speaker') {
+          text = 'Choose what to share in the browser dialog…';
+        } else if (pendingKind === 'files') {
+          text = 'Choose audio files…';
+        } else if (source) {
+          text = source.status();
+        } else {
+          text = 'No audio source. The visuals run, but won’t react to sound.';
+        }
+        $('#sourceStatus').text(text).toggleClass('muted', !source || !!pendingKind);
+        $('#stopSource').prop('hidden', !source);
+        $('#nextTrack').prop('hidden', !(source && source.next && source.hasNext()));
+      }
+
+      function playFiles(files, id) {
+        // Sound is heard slightly delayed so it lines up with the visuals.
+        var delay = audioContext.createDelay();
+        delay.delayTime.value = 0.26;
+        delay.connect(audioContext.destination);
+
+        var index = 0;
+        var current = null;
+        var trackName = '';
+        var started = false;
+        var stopped = false;
+
+        var session = {
+          kind: 'files',
+          status: () => files.length > 1
+            ? `Playing “${trackName}” (${index + 1} of ${files.length})`
+            : `Playing “${trackName}”`,
+          stop: () => {
+            stopped = true;
+            stopCurrent();
+            delay.disconnect();
+          },
+          hasNext: () => index + 1 < files.length,
+          next: () => {
+            stopCurrent();
+            playAt(index + 1);
+          },
+        };
+
+        function stopCurrent() {
+          if (current) {
+            current.onended = null;
+            current.stop();
+            current.disconnect();
+            current = null;
+          }
+        }
+
+        function advance() {
+          if (index + 1 < files.length) {
+            playAt(index + 1);
+          } else {
+            stopIfCurrent(session);
+          }
+        }
+
+        function playAt(i) {
+          index = i;
+          var file = files[i];
+          file.arrayBuffer()
+            .then((data) => audioContext.decodeAudioData(data))
+            .then((buffer) => {
+              if (stopped) {
+                return;
+              }
+              if (!started && !isCurrentRequest(id)) {
+                session.stop();
+                return;
+              }
+              current = audioContext.createBufferSource();
+              current.buffer = buffer;
+              current.connect(delay);
+              current.onended = () => {
+                current = null;
+                advance();
+              };
+              current.start(0);
+              trackName = file.name;
+
+              if (!started) {
+                started = true;
+                activateSource(session, delay);
+              } else {
+                updateSourceUI();
+              }
+            })
+            .catch((err) => {
+              console.log('Error decoding audio file', file.name, err);
+              if (stopped || (!started && !isCurrentRequest(id))) {
+                return;
+              }
+              showMessage(`Couldn’t play “${file.name}” — it may not be a supported audio format.`);
+              if (index + 1 < files.length) {
+                playAt(index + 1);
+              } else if (!started) {
+                clearPending(id);
+                delay.disconnect();
+              } else {
+                stopIfCurrent(session);
+              }
+            });
+        }
+
+        playAt(0);
+      }
+
+      function chooseFiles() {
+        var id = setPending('files');
+        var input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'audio/*';
+        input.multiple = true;
+        input.addEventListener('change', () => {
+          if (input.files.length > 0) {
+            playFiles(Array.from(input.files), id);
+          } else {
+            clearPending(id);
+          }
+        });
+        input.addEventListener('cancel', () => clearPending(id));
+        input.click();
+      }
+
+      function startMic() {
+        var id = setPending('mic');
+        navigator.mediaDevices.getUserMedia({
+          // Voice processing flattens music, so turn it off.
+          audio: {
+            echoCancellation: false,
+            noiseSuppression: false,
+            autoGainControl: false,
+          },
+        }).then((stream) => {
+          if (!isCurrentRequest(id)) {
+            stream.getTracks().forEach((t) => t.stop());
+            return;
+          }
+          var track = stream.getAudioTracks()[0];
+          var micNode = audioContext.createMediaStreamSource(stream);
+          var gainNode = audioContext.createGain();
+          gainNode.gain.value = 1.25;
+          micNode.connect(gainNode);
+
+          var session = {
+            kind: 'mic',
+            status: () => 'Listening to ' + (track.label || 'the microphone'),
+            stop: () => {
+              stream.getTracks().forEach((t) => t.stop());
+              micNode.disconnect();
+            },
+          };
+          track.addEventListener('ended', () => stopIfCurrent(session));
+          activateSource(session, gainNode);
+        }).catch((err) => {
+          console.log('Error getting audio stream from getUserMedia', err);
+          if (!isCurrentRequest(id)) {
+            return;
+          }
+          clearPending(id);
+          showMessage(err.name === 'NotAllowedError'
+            ? 'Microphone access was blocked. Allow it in the browser’s site settings, then try again.'
+            : 'No microphone is available.');
+        });
+      }
+
+      // Speaker output: browsers only expose this through screen-share capture.
+      // Chrome/Edge/Brave offer tab audio everywhere, and system audio on
+      // Windows and macOS 14.2+ (tick "Also share system audio").
+      function startSpeaker() {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+          showMessage('This browser can’t capture speaker output. Use a Chromium browser, ' +
+            'or route audio through a loopback device (e.g. BlackHole) and pick it as the microphone.');
+          return;
+        }
+
+        var id = setPending('speaker');
+        navigator.mediaDevices.getDisplayMedia({
+          video: true, // required by Chrome even when only audio is wanted
+          audio: {
+            echoCancellation: false,
+            noiseSuppression: false,
+            autoGainControl: false,
+          },
+          systemAudio: 'include',
+          selfBrowserSurface: 'exclude',
+        }).then((stream) => {
+          stream.getVideoTracks().forEach((track) => track.stop());
+          if (!isCurrentRequest(id)) {
+            stream.getTracks().forEach((t) => t.stop());
+            return;
+          }
+
+          var audioTracks = stream.getAudioTracks();
+          if (audioTracks.length === 0) {
+            clearPending(id);
+            showMessage('No audio was shared. Try again and turn on “Also share tab audio” ' +
+              '(for a tab) or “Also share system audio” (for the entire screen).');
+            return;
+          }
+
+          // Analyse only; don't route to the speakers, or it would play twice.
+          var speakerNode = audioContext.createMediaStreamSource(new MediaStream(audioTracks));
+          var session = {
+            kind: 'speaker',
+            status: () => 'Capturing ' + (audioTracks[0].label || 'speaker output'),
+            stop: () => {
+              audioTracks.forEach((t) => t.stop());
+              speakerNode.disconnect();
+            },
+          };
+          // Fires when the user clicks the browser's "Stop sharing".
+          audioTracks[0].addEventListener('ended', () => stopIfCurrent(session));
+          activateSource(session, speakerNode);
+        }).catch((err) => {
+          console.log('Error getting audio stream from getDisplayMedia', err);
+          if (!isCurrentRequest(id)) {
+            return;
+          }
+          clearPending(id);
+          // NotAllowedError is also what cancelling the dialog produces.
+          if (err.name !== 'NotAllowedError') {
+            showMessage('Couldn’t capture speaker output in this browser.');
+          }
+        });
+      }
+
+      $('.sources button').click(function() {
+        audioContext.resume();
+        var kind = $(this).data('source');
+        if (source && source.kind === kind) {
+          stopSource();
+          return;
+        }
+        if (pendingKind === kind) {
+          return;
+        }
+        if (kind === 'files') {
+          chooseFiles();
+        } else if (kind === 'mic') {
+          startMic();
+        } else if (kind === 'speaker') {
+          startSpeaker();
+        }
+      });
+
+      $('#stopSource').click(stopSource);
+      $('#nextTrack').click(() => source && source.next && source.next());
+
+      /* ---------- Presets ---------- */
+
+      function loadPreset(index, blendTime) {
+        presetIndex = index;
+        if (visualizer) {
+          visualizer.loadPreset(presets[presetKeys[presetIndex]], blendTime);
+        }
+        $('#presetSelect').val(presetIndex);
+        scheduleCycle();
+      }
+
+      function nextPreset(blendTime = BLEND_TIME) {
+        presetIndexHist.push(presetIndex);
+        var numPresets = presetKeys.length;
+        var index = presetRandom
+          ? Math.floor(Math.random() * numPresets)
+          : (presetIndex + 1) % numPresets;
+        loadPreset(index, blendTime);
+      }
+
+      function prevPreset(blendTime = BLEND_TIME) {
+        var numPresets = presetKeys.length;
+        var index = presetIndexHist.length > 0
+          ? presetIndexHist.pop()
+          : ((presetIndex - 1) + numPresets) % numPresets;
+        loadPreset(index, blendTime);
+      }
+
+      // Restarted on every preset change, so a manual change gets a full cycle.
+      function scheduleCycle() {
+        clearTimeout(cycleTimeout);
+        cycleTimeout = null;
+        if (presetCycle) {
+          cycleTimeout = setTimeout(() => nextPreset(CYCLE_BLEND_TIME), presetCycleLength);
+        }
+      }
+
+      $('#presetSelect').change(() => {
+        presetIndexHist.push(presetIndex);
+        loadPreset(parseInt($('#presetSelect').val()), BLEND_TIME);
+      });
+
+      $('#prevPreset').click(() => prevPreset());
+      $('#nextPreset').click(() => nextPreset());
+
+      $('#presetCycle').change(() => {
+        presetCycle = $('#presetCycle').is(':checked');
+        $('#presetCycleLength').prop('disabled', !presetCycle);
+        scheduleCycle();
+      });
+
+      $('#presetCycleLength').change(() => {
+        var seconds = parseFloat($('#presetCycleLength').val());
+        if (!(seconds >= 1)) {
+          seconds = presetCycleLength / 1000;
+        }
+        $('#presetCycleLength').val(seconds);
+        presetCycleLength = seconds * 1000;
+        scheduleCycle();
+      });
+
+      $('#presetRandom').change(() => {
+        presetRandom = $('#presetRandom').is(':checked');
+      });
+
+      /* ---------- Effects ---------- */
+
+      var EFFECTS_STORAGE_KEY = 'butterchurn.effects';
+      var MIRROR_MODES = ['none', 'horizontal', 'vertical', 'quad'];
+
+      var percent = (v) => `${Math.round(v * 100)}%`;
+      var percentOrOff = (v) => (v === 0 ? 'Off' : percent(v));
+      var EFFECT_SLIDERS = [
+        { key: 'kaleidoscope', group: 'distort', label: 'Kaleidoscope', min: 0, max: 12, step: 1,
+          format: (v) => (v < 2 ? 'Off' : `${v} segments`) },
+        { key: 'pixelate', group: 'distort', label: 'Pixelate', min: 0, max: 32, step: 1,
+          format: (v) => (v < 2 ? 'Off' : `${v} px`) },
+        { key: 'rgbSplit', group: 'distort', label: 'RGB split', min: 0, max: 1, step: 0.01, format: percentOrOff },
+        { key: 'echo', group: 'distort', label: 'Echo', min: 0, max: 1, step: 0.01, format: percentOrOff },
+        { key: 'hue', group: 'color', label: 'Hue shift', min: -180, max: 180, step: 1, format: (v) => `${v}°` },
+        { key: 'hueCycle', group: 'color', label: 'Hue cycle', min: 0, max: 180, step: 5,
+          format: (v) => (v === 0 ? 'Off' : `${v}°/s`) },
+        { key: 'saturation', group: 'color', label: 'Saturation', min: 0, max: 2, step: 0.01, format: percent },
+        { key: 'contrast', group: 'color', label: 'Contrast', min: 0.5, max: 2, step: 0.01, format: percent },
+        { key: 'brightness', group: 'color', label: 'Brightness', min: 0.5, max: 2, step: 0.01, format: percent },
+        { key: 'posterize', group: 'color', label: 'Posterize', min: 0, max: 16, step: 1,
+          format: (v) => (v < 2 ? 'Off' : `${v} levels`) },
+        { key: 'vignette', group: 'color', label: 'Vignette', min: 0, max: 1, step: 0.01, format: percentOrOff },
+      ];
+
+      function loadEffects() {
+        var saved = {};
+        try {
+          saved = JSON.parse(localStorage.getItem(EFFECTS_STORAGE_KEY)) || {};
+        } catch (e) {}
+        var result = { ...DEFAULT_EFFECTS };
+        Object.keys(DEFAULT_EFFECTS).forEach((key) => {
+          if (typeof saved[key] === typeof DEFAULT_EFFECTS[key]) {
+            result[key] = saved[key];
+          }
+        });
+        if (!MIRROR_MODES.includes(result.mirror)) {
+          result.mirror = 'none';
+        }
+        return result;
+      }
+
+      var effects = loadEffects();
+
+      function applyEffects() {
+        if (effectsPass) {
+          effectsPass.setEffects(effects);
+        }
+        try {
+          localStorage.setItem(EFFECTS_STORAGE_KEY, JSON.stringify(effects));
+        } catch (e) {}
+        renderEffectsUI();
+      }
+
+      function setEffect(key, value) {
+        effects[key] = value;
+        applyEffects();
+      }
+
+      function renderEffectsUI() {
+        $('#effectsEnabled').prop('checked', effects.enabled);
+        $('#effectsBody').toggleClass('is-bypassed', !effects.enabled);
+        $('[data-mirror]').each(function() {
+          $(this).attr('aria-pressed', String($(this).data('mirror') === effects.mirror));
+        });
+        $('[data-toggle]').each(function() {
+          $(this).attr('aria-pressed', String(!!effects[$(this).data('toggle')]));
+        });
+        EFFECT_SLIDERS.forEach((s) => {
+          var row = $(`#fx-${s.key}`);
+          row.find('input').val(effects[s.key]);
+          row.find('output').text(s.format(effects[s.key]));
+        });
+        var allDefault = Object.keys(DEFAULT_EFFECTS).every((key) => effects[key] === DEFAULT_EFFECTS[key]);
+        $('#effectsReset').prop('disabled', allDefault);
+      }
+
+      EFFECT_SLIDERS.forEach((s) => {
+        var row = $(`
+          <div class="slider" id="fx-${s.key}">
+            <label for="fx-${s.key}-input"><span>${s.label}</span><output></output></label>
+            <input type="range" id="fx-${s.key}-input" min="${s.min}" max="${s.max}" step="${s.step}">
+          </div>`);
+        row.find('input')
+          .on('input', function() {
+            setEffect(s.key, parseFloat(this.value));
+          })
+          .on('dblclick', () => setEffect(s.key, DEFAULT_EFFECTS[s.key]));
+        $(`.sliders[data-group="${s.group}"]`).append(row);
+      });
+
+      $('[data-mirror]').click(function() {
+        setEffect('mirror', $(this).data('mirror'));
+      });
+      $('[data-toggle]').click(function() {
+        var key = $(this).data('toggle');
+        setEffect(key, !effects[key]);
+      });
+      $('#effectsEnabled').change(function() {
+        setEffect('enabled', this.checked);
+      });
+      $('#effectsReset').click(() => {
+        effects = { ...DEFAULT_EFFECTS };
+        applyEffects();
+      });
+
+      /* ---------- Keyboard (both windows) ---------- */
+
+      function onKeyDown(e) {
+        if (e.metaKey || e.ctrlKey || e.altKey) {
+          return;
+        }
+        var tag = e.target && e.target.tagName;
+        if (/^(INPUT|SELECT|TEXTAREA)$/.test(tag)) {
+          return;
+        }
+        if (tag === 'BUTTON' && (e.key === ' ' || e.key === 'Enter')) {
+          return;
+        }
+
+        if (e.key === ' ' || e.key === 'ArrowRight') {
+          e.preventDefault();
+          nextPreset();
+        } else if (e.key === 'Backspace' || e.key === 'ArrowLeft') {
+          e.preventDefault();
+          prevPreset();
+        } else if (e.key === 'h' || e.key === 'H') {
+          nextPreset(0);
+        } else if (e.key === 'm' || e.key === 'M') {
+          var next = (MIRROR_MODES.indexOf(effects.mirror) + 1) % MIRROR_MODES.length;
+          setEffect('mirror', MIRROR_MODES[next]);
+        } else if (e.key === 'i' || e.key === 'I') {
+          setEffect('invert', !effects.invert);
+        } else if (e.key === 'e' || e.key === 'E') {
+          setEffect('enabled', !effects.enabled);
+        }
+      }
+      document.addEventListener('keydown', onKeyDown);
+
+      /* ---------- Display window ---------- */
+
+      // display.html calls this once loaded, handing over its window.
+      window.butterchurnDisplayReady = function(win) {
+        displayWin = win;
+        var canvas = win.document.getElementById('canvas');
+
+        // Butterchurn draws its final output into a width x height viewport of
+        // the canvas, so pass it the canvas's real (device-pixel) size with
+        // pixelRatio 1. This renders at the screen's native resolution.
+        function measure() {
+          var ratio = win.devicePixelRatio || 1;
+          var w = win.innerWidth * ratio;
+          var h = win.innerHeight * ratio;
+          // Cap very large surfaces (e.g. 5K fullscreen) to keep frame rate up.
+          var scale = Math.min(1, Math.sqrt(MAX_RENDER_PIXELS / (w * h)));
+          return {
+            w: Math.max(1, Math.round(w * scale)),
+            h: Math.max(1, Math.round(h * scale)),
+          };
+        }
+
+        var size = measure();
+        canvas.width = size.w;
+        canvas.height = size.h;
+        visualizer = butterchurn.createVisualizer(audioContext, canvas, {
+          width: size.w,
+          height: size.h,
+          pixelRatio: 1,
+          textureRatio: 1,
+        });
+        if (audioNode) {
+          visualizer.connectAudio(audioNode);
+        }
+        try {
+          effectsPass = new EffectsPass(visualizer);
+          effectsPass.setEffects(effects);
+        } catch (err) {
+          // The visualizer still works without effects.
+          console.error(err);
+          effectsPass = null;
+        }
+        loadPreset(presetIndex, 0);
+
+        var myVisualizer = visualizer;
+        win.addEventListener('keydown', onKeyDown);
+        win.addEventListener('pagehide', () => onDisplayClosed(win));
+
+        // Drive rendering from the display window's frame clock so it keeps
+        // animating while the control panel is in the background.
+        var hasRendered = false;
+        function render() {
+          if (win.closed || visualizer !== myVisualizer) {
+            return;
+          }
+          // Scheduled first so one failed frame can't stop the loop.
+          win.requestAnimationFrame(render);
+
+          // Checked per frame (not on 'resize') so drags resize at most once per
+          // frame, and moving to a screen with a different DPI is picked up.
+          // Butterchurn redraws the previous frame on resize, so one must exist.
+          var next = measure();
+          if (hasRendered && (next.w !== size.w || next.h !== size.h)) {
+            size = next;
+            canvas.width = size.w;
+            canvas.height = size.h;
+            myVisualizer.setRendererSize(size.w, size.h);
+          }
+          myVisualizer.render();
+          hasRendered = true;
+        }
+        win.requestAnimationFrame(render);
+
+        updateDisplayStatus();
+      };
+
+      function onDisplayClosed(win) {
+        if (displayWin === win) {
+          if (visualizer && audioNode) {
+            visualizer.disconnectAudio(audioNode);
+          }
+          displayWin = null;
+          visualizer = null;
+          effectsPass = null;
+          updateDisplayStatus();
+        }
+      }
+
+      function openDisplay() {
+        if (displayWin && !displayWin.closed) {
+          displayWin.focus();
+          return;
+        }
+        var win = window.open('display.html', 'butterchurnDisplay', 'width=960,height=540');
+        if (!win) {
+          $('#displayStatus').text('Popup blocked — allow popups for this site');
+        }
+      }
+
+      function updateDisplayStatus() {
+        var open = !!displayWin && !displayWin.closed;
+        $('#displayStatusWrap').toggleClass('is-on', open);
+        $('#displayStatus').text(open ? 'Display open' : 'Display closed');
+        $('#openDisplayBut')
+          .text(open ? 'Show display' : 'Open display')
+          .toggleClass('primary', !open);
+      }
+
+      $('#openDisplayBut').click(openDisplay);
+
+      // Catch closes that pagehide may miss.
+      setInterval(() => {
+        if (displayWin && displayWin.closed) {
+          onDisplayClosed(displayWin);
+        }
+      }, 1000);
+
+      window.addEventListener('beforeunload', () => {
+        if (displayWin && !displayWin.closed) {
+          displayWin.close();
+        }
+      });
+
+      /* ---------- Init ---------- */
+
+      function initPlayer() {
+        presets = {};
+        if (window.base && window.base.default) {
+          Object.assign(presets, window.base.default);
+        }
+        if (window.extra && window.extra.default) {
+          Object.assign(presets, window.extra.default);
+        }
+        presets = _(presets).toPairs().sortBy(([k, v]) => k.toLowerCase()).fromPairs().value();
+        presetKeys = _.keys(presets);
+
+        var presetSelect = document.getElementById('presetSelect');
+        for (var i = 0; i < presetKeys.length; i++) {
+          var opt = document.createElement('option');
+          opt.textContent = presetKeys[i];
+          opt.value = i;
+          presetSelect.appendChild(opt);
+        }
+
+        $('#presetCount').text(`${presetKeys.length} presets`);
+        loadPreset(Math.floor(Math.random() * presetKeys.length), 0);
+        renderEffectsUI();
+        updateSourceUI();
+        updateDisplayStatus();
+        openDisplay();
+      }
+
+      initPlayer();
+    });
+  </script>
+</head>
+<body>
+  <main>
+    <header class="header">
+      <h1>Butterchurn</h1>
+      <span class="status" id="displayStatusWrap">
+        <span class="dot"></span>
+        <span id="displayStatus">Display closed</span>
+      </span>
+      <button id="openDisplayBut" class="primary">Open display</button>
+    </header>
+
+    <section class="card">
+      <h2>Audio source</h2>
+      <div class="sources" role="group" aria-label="Audio source">
+        <button type="button" data-source="files" aria-pressed="false">
+          <span class="label">Local files</span>
+          <span class="hint">Play audio files from this computer</span>
+        </button>
+        <button type="button" data-source="mic" aria-pressed="false">
+          <span class="label">Microphone</span>
+          <span class="hint">Listen to a mic or line-in</span>
+        </button>
+        <button type="button" data-source="speaker" aria-pressed="false">
+          <span class="label">Speaker output</span>
+          <span class="hint">Use what this computer is playing</span>
+        </button>
+      </div>
+      <div class="source-status">
+        <span id="sourceStatus" class="muted"></span>
+        <button type="button" id="nextTrack" hidden>Next track</button>
+        <button type="button" id="stopSource" hidden>Stop</button>
+      </div>
+      <p id="audioMessage" class="message" role="status" hidden></p>
+    </section>
+
+    <section class="card">
+      <h2>Preset<span class="muted count" id="presetCount"></span></h2>
+      <div class="row">
+        <button type="button" id="prevPreset" class="icon" title="Previous preset" aria-label="Previous preset">‹</button>
+        <select id="presetSelect" aria-label="Preset"></select>
+        <button type="button" id="nextPreset" class="icon" title="Next preset" aria-label="Next preset">›</button>
+      </div>
+      <div class="row options">
+        <label class="check">
+          <input type="checkbox" id="presetCycle" checked>
+          Auto-advance every
+        </label>
+        <span class="seconds">
+          <input type="number" id="presetCycleLength" step="1" value="15" min="1" aria-label="Seconds between presets">
+          <span class="muted">sec</span>
+        </span>
+        <label class="check">
+          <input type="checkbox" id="presetRandom" checked>
+          Random order
+        </label>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <h2>Effects</h2>
+        <label class="check" title="Turn all effects on or off (E)">
+          <input type="checkbox" id="effectsEnabled" checked>
+          On
+        </label>
+        <button type="button" id="effectsReset">Reset</button>
+      </div>
+      <div id="effectsBody">
+        <div class="subhead">Mirror &amp; flip</div>
+        <div class="row">
+          <div class="segmented" role="group" aria-label="Mirror">
+            <button type="button" data-mirror="none">Off</button>
+            <button type="button" data-mirror="horizontal" title="Reflect the left half onto the right">Horizontal</button>
+            <button type="button" data-mirror="vertical" title="Reflect the top half onto the bottom">Vertical</button>
+            <button type="button" data-mirror="quad" title="Mirror both ways">Quad</button>
+          </div>
+          <div class="chips">
+            <button type="button" data-toggle="flipX">Flip horizontal</button>
+            <button type="button" data-toggle="flipY">Flip vertical</button>
+          </div>
+        </div>
+
+        <div class="subhead">Filters</div>
+        <div class="chips">
+          <button type="button" data-toggle="invert" title="Negative colors (I)">Invert</button>
+          <button type="button" data-toggle="solarize" title="Bright areas fold back to dark, like an overexposed photo">Solarize</button>
+          <button type="button" data-toggle="burn" title="Color burn: deep shadows, hot saturated highlights">Burn</button>
+          <button type="button" data-toggle="brighten" title="Lift darker tones">Brighten</button>
+          <button type="button" data-toggle="darken" title="Deepen darker tones">Darken</button>
+          <button type="button" data-toggle="edges" title="Neon outlines of shapes">Edges</button>
+        </div>
+
+        <div class="subhead">Distort <span class="muted">· double-click a slider to reset it</span></div>
+        <div class="sliders" data-group="distort"></div>
+
+        <div class="subhead">Color</div>
+        <div class="sliders" data-group="color"></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Shortcuts</h2>
+      <dl class="shortcuts">
+        <dt><kbd>→</kbd> or <kbd>Space</kbd></dt>
+        <dd>Next preset</dd>
+        <dt><kbd>←</kbd> or <kbd>Backspace</kbd></dt>
+        <dd>Previous preset</dd>
+        <dt><kbd>H</kbd></dt>
+        <dd>Next preset, instant cut</dd>
+        <dt><kbd>M</kbd></dt>
+        <dd>Cycle mirror mode</dd>
+        <dt><kbd>I</kbd></dt>
+        <dd>Invert colors</dd>
+        <dt><kbd>E</kbd></dt>
+        <dd>Turn all effects on/off</dd>
+        <dt><kbd>F</kbd> or double-click</dt>
+        <dd>Fullscreen (in the display window). The cursor hides when the mouse is idle.</dd>
+      </dl>
+    </section>
+  </main>
+</body>
+</html>
